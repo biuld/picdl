@@ -1,0 +1,25 @@
+---
+description: Python coding standards including modern type hints, uv for dependency management, and functional programming style.
+globs: ["**/*.py"]
+alwaysApply: true
+---
+
+# Python Coding Standards
+
+## 1. Modern Type Hints
+- Always use modern type hint syntax (PEP 585 for Python 3.9+), e.g., `list[str]` instead of `typing.List[str]`.
+- Ensure all function arguments and return values have type hints.
+- Use `Literal` for specific string/integer values where applicable.
+- For optional values, use `Optional[Type]` or `Type | None`.
+
+## 2. uv for Dependency Management
+- Use `uv` for all dependency management tasks (installation, locking, environment creation).
+- Prefer `uv add` for adding new dependencies.
+- Ensure `uv.lock` is always up-to-date and committed.
+
+## 3. Functional Style
+- Favor pure functions over functions with side effects.
+- Prefer immutable data structures where possible.
+- Use `map`, `filter`, `functools.reduce` for data transformations.
+- Avoid global mutable state.
+- Break down complex logic into smaller, testable functions.

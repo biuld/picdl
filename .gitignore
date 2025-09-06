@@ -1,0 +1,15 @@
+# macOS system files
+.DS_Store
+
+# Python cache and compiled files
+__pycache__/
+*.pyc
+
+# Python version manager files
+.python-version
+
+# uv dependency lock file
+uv.lock
+
+# Download directory
+dl/
