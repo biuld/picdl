@@ -3,19 +3,33 @@ import asyncio
 from pathlib import Path
 from typing import Callable, TypeVar, Awaitable
 import json
+from logging.handlers import RotatingFileHandler
+import os
 
 from rich.console import Console
 from rich.logging import RichHandler
 
 # Configure logging with Rich
 console = Console()
-FORMAT = "%(message)s" # Reverted format to only message
+FORMAT = "%(levelname)s - %(name)s - %(message)s"
+log_formatter = logging.Formatter(FORMAT)
 logging.basicConfig(
     level="INFO",
     format=FORMAT,
-    handlers=[RichHandler(console=console, log_time_format="%Y-%m-%d %H:%M:%S")] 
+    handlers=[
+        RichHandler(console=console, log_time_format="%Y-%m-%d %H:%M:%S"),
+        RotatingFileHandler(
+            "application.log", maxBytes=5*1024*1024, backupCount=1, encoding="utf-8"
+        ),
+    ]
 )
-log = logging.getLogger("weibo-dl")
+file_handler = next(handler for handler in logging.getLogger().handlers if isinstance(handler, RotatingFileHandler))
+file_handler.setFormatter(log_formatter)
+log = logging.getLogger("picdl")
+
+# Set logging level for httpx and httpcore to CRITICAL to suppress their logs.
+logging.getLogger("httpx").setLevel(logging.CRITICAL)
+logging.getLogger("httpcore").setLevel(logging.CRITICAL)
 
 R = TypeVar('R')
 
@@ -92,6 +106,16 @@ async def add_completed_uid(base_dir: Path, uid: str) -> None:
     completed_uids = await read_resume_state(base_dir)
     completed_uids.add(uid)
     await write_resume_state(base_dir, completed_uids)
+
+
+async def delete_resume_state(base_dir: Path) -> None:
+    """Deletes the resume state file."""
+    resume_file_path = _get_resume_file_path(base_dir)
+    if resume_file_path.exists():
+        await asyncio.to_thread(os.remove, resume_file_path)
+        log.info(f"Deleted resume state file: {resume_file_path}")
+    else:
+        log.info(f"Resume state file not found, no need to delete: {resume_file_path}")
 
 
 async def retry[T](func: Callable[[], Awaitable[T]], times: int = 0) -> T | None:

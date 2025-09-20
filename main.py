@@ -2,15 +2,9 @@ import asyncio
 import typer
 from functools import wraps
 from apscheduler.schedulers.asyncio import AsyncIOScheduler # type: ignore
-from util import log, path, read_resume_state, add_completed_uid # Added resume functions
+from util import log, path, read_resume_state, add_completed_uid, delete_resume_state # Added resume functions
 from weibo.api import get_album, sina_visitor_system
 
-import logging
-
-
-# Set logging level for httpx and httpcore to CRITICAL to suppress their logs.
-logging.getLogger("httpx").setLevel(logging.CRITICAL)
-logging.getLogger("httpcore").setLevel(logging.CRITICAL)
 
 app = typer.Typer()
 
@@ -58,6 +52,7 @@ async def _run_walk_uids_job(p: str) -> None:
         await add_completed_uid(dir_path, uid)
         await asyncio.sleep(60)
     log.info("finished term")
+    await delete_resume_state(dir_path)
 
 
 @app.command("walk")
