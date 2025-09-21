@@ -1,5 +1,6 @@
 import asyncio
 import typer
+from datetime import datetime
 from functools import wraps
 from apscheduler.schedulers.asyncio import AsyncIOScheduler # type: ignore
 from util import log, path, read_resume_state, add_completed_uid, delete_resume_state # Added resume functions
@@ -96,8 +97,8 @@ async def schedule_downloads(
     """
     log.info(f"Scheduling downloads for path: {p}...") # Replaced console.print with log.info
     scheduler = AsyncIOScheduler()
-    # Schedule the job to run once a day
-    scheduler.add_job(_run_walk_uids_job, "interval", days=1, args=[p])
+    # Schedule the job to run immediately, then once a day
+    scheduler.add_job(_run_walk_uids_job, "interval", days=1, args=[p], next_run_time=datetime.now())
     scheduler.start()
     log.info("Scheduler started. Press Ctrl+C to exit.") # Replaced console.print with log.info
 

@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import Callable, TypeVar, Awaitable
 import json
 from logging.handlers import RotatingFileHandler
-import os
+import aiofiles
+import aiofiles.os
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -53,17 +54,15 @@ def get_media_path(uid: str, base_dir: Path, filename: str) -> Path:
 
 async def save(uid: str, base_dir: Path, filename: str, data: bytes) -> int:
     """
-    Saves binary data to a file asynchronously using asyncio.to_thread.
+    Saves binary data to a file asynchronously using aiofiles.
     """
-    # Use asyncio.to_thread to run blocking file I/O in a separate thread
-    def _blocking_save():
-        # Use the get_media_path to construct the full file path
-        dest_file = get_media_path(uid, base_dir, filename)
-        if not dest_file.exists():
-            dest_file.write_bytes(data)
-            log.info(f"{dest_file} saved")
-        return 1
-    return await asyncio.to_thread(_blocking_save)
+    # Use get_media_path to construct the full file path
+    dest_file = get_media_path(uid, base_dir, filename)
+    if not dest_file.exists():
+        async with aiofiles.open(dest_file, 'wb') as f:
+            await f.write(data)
+        log.info(f"{dest_file} saved")
+    return 1
 
 def _get_resume_file_path(base_dir: Path) -> Path:
     """
@@ -79,11 +78,9 @@ async def read_resume_state(base_dir: Path) -> set[str]:
     if not resume_file.exists():
         return set()
     try:
-        # Run blocking file I/O in a separate thread
-        def _blocking_read():
-            with open(resume_file, 'r', encoding='utf-8') as f:
-                return set(json.load(f))
-        return await asyncio.to_thread(_blocking_read)
+        async with aiofiles.open(resume_file, 'r', encoding='utf-8') as f:
+            content = await f.read()
+            return set(json.loads(content))
     except json.JSONDecodeError:
         log.warning(f"Invalid JSON in resume file: {resume_file}. Starting fresh.")
         return set()
@@ -93,11 +90,8 @@ async def write_resume_state(base_dir: Path, completed_uids: set[str]) -> None:
     Writes the completed UIDs to the resume state file.
     """
     resume_file = _get_resume_file_path(base_dir)
-    # Run blocking file I/O in a separate thread
-    def _blocking_write():
-        with open(resume_file, 'w', encoding='utf-8') as f:
-            json.dump(list(completed_uids), f, indent=4)
-    await asyncio.to_thread(_blocking_write)
+    async with aiofiles.open(resume_file, 'w', encoding='utf-8') as f:
+        await f.write(json.dumps(list(completed_uids), indent=4))
 
 async def add_completed_uid(base_dir: Path, uid: str) -> None:
     """
@@ -112,7 +106,7 @@ async def delete_resume_state(base_dir: Path) -> None:
     """Deletes the resume state file."""
     resume_file_path = _get_resume_file_path(base_dir)
     if resume_file_path.exists():
-        await asyncio.to_thread(os.remove, resume_file_path)
+        await aiofiles.os.remove(resume_file_path)
         log.info(f"Deleted resume state file: {resume_file_path}")
     else:
         log.info(f"Resume state file not found, no need to delete: {resume_file_path}")
